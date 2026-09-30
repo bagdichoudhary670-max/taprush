@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TapRush</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;min-height:100%;font-family:Arial,sans-serif;background:#111;color:#fff}
+body{display:flex;justify-content:center;overscroll-behavior:none}
+main{width:min(900px,100%);padding:16px}
+
+main{width:min(900px,100%);padding:16px}.card{background:#1b1b1b;border:1px solid #333;border-radius:18px;padding:18px;margin:10px 0}
+h1{margin-top:0}.row{display:flex;gap:10px;flex-wrap:wrap}button,input,select{padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:#fff}
+button{cursor:pointer;background:#333}.tap{height:min(52vh,420px);min-height:260px;width:100%;font-size:clamp(42px,14vw,90px);font-weight:bold;background:#202020;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}.tap:active{transform:scale(.985)}
+.stat{font-size:20px;margin:8px 0}.muted{color:#aaa}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #333;text-align:left}
+@media (max-width:600px){
+  main{padding:10px}
+  .card{padding:14px;border-radius:14px}
+  h1{font-size:28px}
+  .row{display:grid;grid-template-columns:1fr;gap:8px}
+  input,select,button{width:100%;font-size:16px;min-height:48px}
+  .tap{height:55vh;min-height:300px;border-radius:18px}
+  td,th{padding:8px 5px;font-size:14px}
+}
+</style>
+</head>
+<body><main>
+<div class="card">
+<h1>⚡ TapRush</h1>
+<p class="muted">Tap as fast as you can. This browser version runs locally.</p>
+<div class="row">
+<input id="name" maxlength="16" placeholder="Player name">
+<select id="mode"><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select>
+<button id="start">Start Round</button>
+</div>
+</div>
+
+<div class="card">
+<div class="stat">Time: <span id="time">0.0</span>s</div>
+<div class="stat">Taps: <span id="score">0</span></div>
+<button class="tap" id="tap" disabled>TAP!</button>
+</div>
+
+<div class="card">
+<h2>Leaderboard</h2>
+<table><thead><tr><th>#</th><th>Player</th><th>Best</th><th>Games</th></tr></thead>
+<tbody id="board"></tbody></table>
+</div>
+<div class="muted" style="text-align:center;padding:14px 0 6px;font-size:14px">
+Made by <strong>Purshottam Choudhary</strong>
+</div>
+</main>
+<script>
+const modes={10:10000,30:30000,60:60000};
+let running=false,taps=[],startTime=0,duration=0,timer=null;
+const nameEl=document.getElementById('name'), modeEl=document.getElementById('mode');
+const tap=document.getElementById('tap'), scoreEl=document.getElementById('score'), timeEl=document.getElementById('time'), board=document.getElementById('board');
+
+function load(){
+ const data=JSON.parse(localStorage.getItem('taprush')||'[]');
+ board.innerHTML=data.sort((a,b)=>b.best-a.best).slice(0,50).map((p,i)=>
+ `<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.best}</td><td>${p.games}</td></tr>`).join('');
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+document.getElementById('start').onclick=()=>{
+ if(running)return;
+ const name=nameEl.value.trim();
+ if(!/^[A-Za-z0-9_ ]{3,16}$/.test(name)){alert('Name must be 3-16 letters, numbers, spaces or _.');return}
+ duration=modes[modeEl.value]; taps=[]; scoreEl.textContent=0; timeEl.textContent=(duration/1000).toFixed(1);
+ let countdown=3; document.getElementById('start').disabled=true; tap.disabled=true;
+ document.getElementById('start').textContent='Get ready: '+countdown;
+ const c=setInterval(()=>{countdown--; if(countdown>0)document.getElementById('start').textContent='Get ready: '+countdown;
+ else{clearInterval(c);document.getElementById('start').textContent='Running';running=true;tap.disabled=false;startTime=performance.now();timer=setInterval(tick,50)}},1000);
+};
+function tick(){
+ const elapsed=performance.now()-startTime;
+ const left=Math.max(0,duration-elapsed); timeEl.textContent=(left/1000).toFixed(1);
+ if(left<=0) finish();
+}
+tap.onclick=()=>{
+ if(!running)return;
+ const t=Math.round(performance.now()-startTime);
+ taps.push(t); scoreEl.textContent=taps.length;
+};
+function finish(){
+ if(!running)return; running=false; clearInterval(timer); tap.disabled=true;
+ const name=nameEl.value.trim(), mode=modeEl.value, score=taps.length;
+ const data=JSON.parse(localStorage.getItem('taprush')||'[]');
+ let p=data.find(x=>x.name.toLowerCase()===name.toLowerCase());
+ if(!p){p={name,best:score,recent:score,games:1};data.push(p)}
+ else{p.recent=score;p.games++;if(score>p.best)p.best=score}
+ localStorage.setItem('taprush',JSON.stringify(data));
+ document.getElementById('start').disabled=false;document.getElementById('start').textContent='Start Round';
+ alert(`Round finished! Score: ${score}`);
+ load();
+}
+load();
+</script></body></html>
